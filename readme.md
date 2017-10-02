@@ -30,10 +30,7 @@ class HelloApp(PositronApp):
 
 
 if __name__ == '__main__':
-    app = HelloApp(window_title="Hello World App",
-                             default_text=html_code,
-                             port_number=8023,
-                             window_dimensions=(400, 300))
+    app = HelloApp(landing_page=html_code)
     app.run()
 ```
 
