@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
 [Go to overview of examples](documentation/examples.md)
 
-* [Hello world](examples/hello_world.py)
+* [Hello world](examples/Hello_World.py)
 * [Form BMI calculator](examples/bmi_calculator.py)
 * [jinja2 templates](examples/jinja2_example.py)
 
