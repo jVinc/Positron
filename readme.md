@@ -53,9 +53,8 @@ rootdir/
 
 ## Templated HTML
 
-Py-Tron doesn't enforce or make any assumptions on the HTML code, this makes it easy to plug in any particular templating framework you might want to use.
-
-``` Example with jinja2 ```
+Positron doesn't enforce or make any assumptions on the HTML code, this makes it easy to plug in any particular templating framework you might want to use.
+An example using jinja2 is located in the examples folder.
 
 
 [framework]: file://other.md
