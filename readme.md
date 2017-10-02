@@ -1,4 +1,4 @@
-# PyTron
+# Positron
 A framework that makes it simple to develop applications using Python and web technologies, HTML/JS/CSS.
 
 This is still extremely early development. The current state might fail, and everything could potentially change moving forwards.
