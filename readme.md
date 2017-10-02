@@ -13,7 +13,7 @@ This is done simply by inheriting from the class [PositronApp][PositronApp]
 
 ## Hello World
 
-A simply hello world example can be made all in one file by creating a new class derived from [BrowserClass][BrowserClass],
+A simply hello world example can be made all in one file by creating a new class derived from [PositronApp][PositronApp],
 and decorating the functions to be made available in the front-end.
 
 ```Python
@@ -33,6 +33,14 @@ if __name__ == '__main__':
     app = HelloApp(landing_page=html_code)
     app.run()
 ```
+
+## Examples
+
+[Go to overview of examples](documentation/examples.md)
+
+* [Hello world](examples/helloworld.py)
+* [Form BMI calculator](examples/bmi_calculator.py)
+* [jinja2 templates](examples/jinja2_example.py)
 
 ## Larger projects
 For larger projects, the default behavior of the server is to serve static files from a given directory. Which
@@ -55,5 +63,4 @@ An example using jinja2 is located in the examples folder.
 
 
 [framework]: file://other.md
-[PositronApp]: file://other.md
-[BrowserClass]: file://other.md
+[PositronApp]: /documentation/PositronApp.md
