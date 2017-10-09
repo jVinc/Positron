@@ -1,4 +1,4 @@
-from Positron import PositronApp
+from Pysitron import PysitronApp
 
 html_code = """
 <link rel="shortcut icon" href="file:///C:/Users/vincent/Documents/Positon-Framework/resources/logo/logo_vector.svg" />
@@ -11,7 +11,7 @@ bmi: <span id="bmi">...</span>
 """
 
 
-class SolarSystemApp(PositronApp):
+class SolarSystemApp(PysitronApp):
     def calc_bmi(self):
         # Note that when getting things from the dom, you get back a string, so you need to do type conversion if you
         # want to do math.

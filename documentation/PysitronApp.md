@@ -1,4 +1,4 @@
-# PositronApp
+# PysitronApp
 
 This class defines the main workings of the application.
 It exposes a self.window object that can be used to a access javascript functionality in python.

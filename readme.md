@@ -1,15 +1,15 @@
-# Positron
+# Pysitron
 A framework that makes it simple to develop applications using Python and web technologies, HTML/JS/CSS.
 
 This is still extremely early development. The current state might fail, and everything could potentially change moving forwards.
 Still if you try it out and have feedback it is very much appreciated.
 
 ## How it works
-Positron uses cefpython to launch a window running the Chromium Embedded Framework browser, and sets it up to show a temporary local webserver ([more...][framework]).
+Pysitron uses cefpython to launch a window running the Chromium Embedded Framework browser, and sets it up to show a temporary local webserver ([more...][framework]).
 
 It then binds your defined python functions such that they can be called from javascript in the browser.
 
-This is done simply by inheriting from the class [PositronApp][PositronApp]
+This is done simply by inheriting from the class [PysitronApp][PysitronApp]
 
 ## Hello World
 
@@ -17,14 +17,14 @@ A simply hello world example can be made all in one file by creating a new class
 and decorating the functions to be made available in the front-end.
 
 ```Python
-from Positron import PositronApp
+from Pysitron import PysitronApp
 
 html_code = """
 <button onclick="window.say_hello()">Click me to change text!</button>
 <div id = "textfield">...</div>
 """
 
-class HelloApp(PositronApp):
+class HelloApp(PysitronApp):
     def say_hello(self):
         self.window.document.getElementById('textfield').innerHTML = "Hello world!"
 
@@ -58,9 +58,9 @@ rootdir/
 
 ## Templated HTML
 
-Positron doesn't enforce or make any assumptions on the HTML code, this makes it easy to plug in any particular templating framework you might want to use.
+Pysitron doesn't enforce or make any assumptions on the HTML code, this makes it easy to plug in any particular templating framework you might want to use.
 An example using jinja2 is located in the examples folder.
 
 
 [framework]: file://other.md
-[PositronApp]: /documentation/PositronApp.md
+[PysitronApp]: /documentation/PysitronApp.md

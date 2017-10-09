@@ -132,7 +132,7 @@ class LoadHandler(object):
             if self.on_load_function is not None:
                 self.on_load_function()
 
-class PositronApp:
+class PysitronApp:
     def __init__(self, landing_page='', target_url = '', window_title=None, port_number=None, window_dimensions = (400, 300)):
         self.window_dimensions = window_dimensions
         self.port_number = get_open_port() if port_number is None else port_number
@@ -174,7 +174,7 @@ class PositronApp:
         self.bindings.SetFunction('set_value', self.set_value)
 
         sub_class_methods = [method_name for method_name in dir(self.__class__) if (not method_name.startswith('_'))
-                            and (method_name not in dir(PositronApp))
+                            and (method_name not in dir(PysitronApp))
                             and callable(getattr(self.__class__, method_name))
                             and getattr(getattr(self.__class__, method_name), 'bind_to_window', True)]
         for method in sub_class_methods:

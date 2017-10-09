@@ -1,6 +1,6 @@
 from itertools import chain
 import random
-from Positron import PositronApp
+from Pysitron import PysitronApp
 
 
 html_code = """
@@ -17,7 +17,7 @@ html_code = """
 # todo: imports will be an issue. Which ones should go toe the frontend and which to the backend?
 
 
-class SolarSystemApp(PositronApp):
+class SolarSystemApp(PysitronApp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.planets = [list(chain(planet, (index + 1,))) for index, planet in enumerate((

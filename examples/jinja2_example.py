@@ -1,8 +1,8 @@
 from jinja2 import Environment, FileSystemLoader
-from Positron import PositronApp
+from Pysitron import PysitronApp
 
 
-class SolarSystemApp(PositronApp):
+class SolarSystemApp(PysitronApp):
     def say_hello(self):
         self.window.document.getElementById('textfield').innerHTML = "Hello world!"
 

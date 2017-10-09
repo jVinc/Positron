@@ -1,11 +1,11 @@
-from Positron import PositronApp
+from Pysitron import PysitronApp
 
 html_code = """
 <button onclick="window.say_hello()" id="button">Click me to change text!</button>
 """
 
 
-class SolarSystemApp(PositronApp):
+class SolarSystemApp(PysitronApp):
     def say_hello(self):
         self.window.document.getElementById('button').innerHTML = "Hello world!"
 
