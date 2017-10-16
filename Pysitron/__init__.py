@@ -272,9 +272,4 @@ def check_versions():
           ver=platform.python_version(), arch=platform.architecture()[0]))
     assert cef.__version__ >= "55.3", "CEF Python v55.3+ required to run this"
 
-
-"""
-filefixer regexp:
-"\{\{ '([^']*)'\|staticfile }}"
-
-"""
+__version__ = '0.0.1-dev'
