@@ -1,7 +1,15 @@
 # Examples for getting started
 
-* [Hello World](../examples/Hello_World.py)
-* [Solar System example using backend functions](../examples/solarsystem_backend.py)
-* [Simple example using jinja2 templates](../examples/jinja2_example.py)
-* [BMI calculator form example](../examples/bmi_calculator.py)
+* [Hello World][helloworld]
+* [Solar System example using backend functions][helloworld]
+* [Simple example using jinja2 templates][helloworld]
+* [BMI calculator form example][helloworld]
 
+* Plotting example with external javascript resource
+* Callback back and forth between python/js
+
+* Compiling code to javascript for front-end
+
+
+
+[helloworld]: file://other.md

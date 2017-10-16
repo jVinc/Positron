@@ -13,8 +13,7 @@ bmi: <span id="bmi">...</span>
 
 class SolarSystemApp(PysitronApp):
     def calc_bmi(self):
-        # Note that when getting things from the dom, you get back a string, so you need to do type conversion if you
-        # want to do math.
+        # When retrieving content from the dom, it is returned in string form. So explicit type converstion is needed.
         height = float(self.window.document.getElementById('height').value)
         weight = float(self.window.document.getElementById('weight').value)
         bmi = round(weight/height**2*10**4, 2)

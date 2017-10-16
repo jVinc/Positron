@@ -4,28 +4,77 @@ This module defines a base-object for building proton apps using html/css and ja
 
 from cefpython3 import cefpython as cef
 from werkzeug.serving import run_simple
+from werkzeug.wsgi import SharedDataMiddleware
+from wsgiref.simple_server import make_server
 from threading import Thread
-
+import threading
 import platform
 import sys
 import win32con  # todo figure out a nice way of making the functionality used from win32 cross-platform
 import win32gui
 import win32api
 import threading
+import __main__ as main
 import os
 import queue
 import atexit
 import os
+import uuid
+from jinja2 import Environment, BaseLoader
+import time
+from asyncio import Future
+import functools
 
-# todo: bind_to_window is still here even though I've sort of decided I would just expose all functions of the object
-def bind_to_window(fun):
-    fun.bind_to_window = True
-    return fun
+default_icon = False
+
+def static_path(filename):
+    return "/" + filename
+
+def jinja2_parse_str(input_string):
+    env = Environment(loader=BaseLoader)
+    env.filters['staticfile'] = static_path
+    template = env.from_string(input_string)
+    return template.render()
+
+class Length_Correcting_Middleware(object):
+    def __init__(self, app):
+        self.app = app
+
+    def __call__(self, environ, start_response):
+
+        def custom_start_response(status, headers, exc_info=None):
+            content_length = 20
+            headers.append(('Content-Length', content_length))
+            return start_response(status, headers, exc_info)
+
+        return self.app(environ, custom_start_response)
 
 
-def prevent_bind_to_window(fun):
-    fun.bind_to_window = True
-    return fun
+
+def jinja2_parse_middleware(fun):
+    def wrapped(environ, start_response):
+        global call_args
+        call_args = None
+
+        def store_call_args(*args):
+            global call_args
+            call_args = args
+
+        # Apparently we need something that also eats up writes() contents... More work
+        if environ['PATH_INFO'].endswith('.html'):
+            # Change the start_response so it just stores it's call, then here we change content-length and actually call it.
+
+            text = [x for x in fun(environ, store_call_args)]
+
+            start_response('200 OK', [('Content-Type', 'text/html')])
+
+            text2 = [jinja2_parse_str(x.decode('utf-8')).replace('\n', '\r\n').encode('utf-8') for x in text]
+            return text2
+        else:
+            cont = fun(environ, store_call_args)
+            start_response(*call_args)
+        return cont
+    return wrapped
 
 
 def argument_python_to_javascript(arg):
@@ -35,9 +84,17 @@ def argument_python_to_javascript(arg):
         return str(arg)
 
 
+def return_value(func):
+    @functools.wraps(func)
+    def _wrapped(self, resolve, *args, **kwargs):
+        result = func(self, *args, **kwargs)
+        resolve.Call(result)
+    return _wrapped
+
+
 def daemon_threaded(fun):
     def wrapped(*args, **kwargs):
-        t = Thread(target=fun, args=args, daemon=True)  # Offload work and return imidiately en order to not block the gui
+        t = Thread(target=fun, args=args, kwargs=kwargs, daemon=True)  # Offload work and return immidately in order to not block the gui
         t.start()
     return wrapped
 
@@ -74,19 +131,25 @@ def get_open_port():
     return port
 
 
-def load_icon_from_file(iconPath):
+def load_icon_from_file(icon_path):
     hinst = win32api.GetModuleHandle(None)
     icon_flags = win32con.LR_LOADFROMFILE | win32con.LR_DEFAULTSIZE
-    hicon = win32gui.LoadImage(hinst, iconPath, win32con.IMAGE_ICON, 0, 0, icon_flags, )
+    hicon = win32gui.LoadImage(hinst, icon_path, win32con.IMAGE_ICON, 0, 0, icon_flags, )
     return hicon
 
 
 class LoadHandler(object):
-    def __init__(self, on_load_function=None, window_title="", window_dimensions=(800, 500)):
+    def __init__(self, on_load_function=None, window_title="", window_dimensions=(800, 500), browser=None, methods=None, isClosing=None):
         self.window_dimensions = window_dimensions
         self.window_title = window_title
         self.on_load_function = on_load_function
         self.windowfixed = False
+        self.browser = browser
+        self.methods = methods
+        self.isClosing = isClosing
+
+    def OnBeforeClose(self, browser, **_):
+        self.isClosing.set()
 
     def OnBeforeResourceLoad(self, browser, **_):
         if not self.windowfixed:
@@ -104,61 +167,119 @@ class LoadHandler(object):
             style &= ~win32con.WS_MAXIMIZEBOX
             win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, style)
 
+            global default_icon
+            if default_icon:
+                icon_path = os.path.dirname(os.path.abspath(__file__)) + r"\..\resources\icon.ico"
 
-            icon_path =  os.path.dirname(os.path.abspath(__file__)) + r"\..\resources\icon.ico"
+                icon = load_icon_from_file(icon_path)
+                win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_SMALL, icon)
+                win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_BIG, icon)
 
-            icon = load_icon_from_file(icon_path)
-            win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_SMALL, icon)
-            win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_BIG, icon)
+                # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_SMALL, icon)
+                # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_BIG, icon)
 
-            # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_SMALL, icon)
-            # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_BIG, icon)
+                # hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
+                flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
+                nid = (hwnd, 0, flags, win32con.WM_USER + 20, icon, "Python Demo")
+                win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
 
-            # hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
-            flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
-            nid = (hwnd, 0, flags, win32con.WM_USER + 20, icon, "Python Demo")
-            win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
-
-
-            def destroy_icon(icon):
-                win32gui.DestroyIcon(icon)
-            atexit.register(destroy_icon, icon)
+                def destroy_icon(icon):
+                    win32gui.DestroyIcon(icon)
+                atexit.register(destroy_icon, icon)
 
             print('done loading')
             self.windowfixed = True
 
+    def OnLoadStart(self, browser, frame):
+        self.browser.ExecuteJavascript("""
+                                var BackEnd=window;
+
+                                function returnwrapper(func) {
+                                    async function wrapped(callback_id, ...args) {    
+                                        out = await func(...args);
+                                        window.javascript_return(callback_id, out);
+
+                                    }
+                                    return wrapped
+                                }
+
+                                function joiner(resolve, args){
+                                    var new_args = new Array(resolve);
+                                    if (args.length > 0) {
+                                        new_args.push.apply(new_args, args)
+                                    }
+                                    return new_args;
+                                }
+
+                                function returnAsPromise(func) {
+                                    function caller(...args) {
+                                        return new Promise(resolve => func.apply(self, joiner(resolve, args)));
+                                    }
+                                    return caller;
+                                };
+
+                                """)
+        print('browser-side framework functions set')
+
+        # Apply wrapper to make functions return promises
+        for method in self.methods:
+            self.browser.ExecuteJavascript(f'{method} = returnAsPromise({method});')
+
     def OnLoadEnd(self, browser, frame, http_code):
         if frame.IsMain():
             if self.on_load_function is not None:
-                self.on_load_function()
+                self.on_load_function(browser)
+
 
 class PysitronApp:
-    def __init__(self, landing_page='', target_url = '', window_title=None, port_number=None, window_dimensions = (400, 300)):
+    def __init__(self, landing_page='', start_page = '', window_title=None, port_number=None, window_dimensions = (400, 300)):
         self.window_dimensions = window_dimensions
         self.port_number = get_open_port() if port_number is None else port_number
         self.default_text = landing_page
         self.window_title = window_title if window_title is not None else self.__class__.__name__
-        self.target_url = target_url
+        self.start_page = start_page
         self.javascript_bound = False
         self.bindings = cef.JavascriptBindings(bindToFrames=True, bindToPopups=True)
         self.queue = queue.Queue()
+        self.methods = None
+        self.isClosing = threading.Event()
+        self._return_queue_dict = dict()
 
         check_versions()
         sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
         cef.DpiAware.SetProcessDpiAware()
         cef.Initialize(settings={'context_menu': {'enabled': True}, 'auto_zooming': 'system_dpi', 'multi_threaded_message_loop':True})
         browser = None
+
+        # Dance a little jig to do synchronous asynchronous initialisation...
         postqueue = queue.Queue()
 
         def create_browser():
             print('Serving on localhost:' + str(self.port_number))
-            postqueue.put(cef.CreateBrowserSync(url=r"http://localhost:" + str(self.port_number) + '/' + self.target_url, window_title=self.window_title))
+            postqueue.put(cef.CreateBrowserSync(url=r"http://localhost:" + str(self.port_number) + '/' + self.start_page, window_title=self.window_title))
 
-        # Dance a little jig to do synchronous asynchronous initialisation...
         cef.PostTask(cef.TID_UI, create_browser)
 
         self.browser = postqueue.get()
-        self.window = JSAcessObject(browser=self.browser, queue_ref=self.queue)
+        self.window = JSAcessObject(browser=self.browser, queue_ref=self.queue, app=self)
+
+    def javascript_return(self, callback_id, returned):
+        self._return_queue_dict[callback_id].put(returned)
+
+    def ExecuteJavascript(self, string):
+        self.browser.ExecuteJavascript(string)
+
+    def ExecuteFunction(self, string_fun, *args):
+        callback_id = str(uuid.uuid1())
+        self._return_queue_dict[callback_id] = queue.Queue(maxsize=1)
+        self.browser.ExecuteFunction(f'returnwrapper({string_fun})', callback_id, *args)
+        return self._return_queue_dict[callback_id].get()
+
+    def ExecuteJavascript_syncronous(self, string):
+        callback_id = str(uuid.uuid1())
+        self._return_queue_dict[callback_id] = queue.Queue(maxsize=1)
+        self.browser.ExecuteJavascript(string + f'\njavascript_return("{callback_id}","");')
+        self._return_queue_dict[callback_id].get()
 
     def set_value(self, value):
         object.__getattribute__(self, 'queue').put(value)
@@ -181,51 +302,69 @@ class PysitronApp:
             # Injecting the self object back into bound functions, so it's easier for the python side of things
             # to mess around with things.
             # todo review if it´s a sane thing to make all callbacks threaded
-            loaded_method = lambda *args, raw_method=getattr(self.__class__, method): daemon_threaded(raw_method)(self, *args)
+            loaded_method = lambda *args, raw_method=getattr(self.__class__, method): daemon_threaded(return_value(raw_method))(self, *args)
             self.bindings.SetFunction(method, loaded_method)
-            print(method, getattr(self.__class__, method))
+
+            # print(method, getattr(self.__class__, method))
+
+        self.methods = sub_class_methods
+
+        self.bindings.SetFunction('javascript_return', self.javascript_return)
+
         self.browser.SetJavascriptBindings(self.bindings)
+
         self.javascript_bound = True
 
-    def setup_server(self, on_load_function = None):
+    def setup_server(self, on_load_function=None):
 
         def no_app(environ, start_response):
             """Dummy app since all files are in static directory"""
             start_response('200 OK', [('Content-Type', 'text/html')])
             return [self.default_text.encode('utf-8')]
 
+        # Building the wrapped app
+        app = SharedDataMiddleware(no_app, {
+            '/': os.path.dirname(main.__file__)
+        })
+
+        app2 = jinja2_parse_middleware(app)
+
         def starter():
-            run_simple(r'localhost', self.port_number, no_app, use_reloader=False, use_debugger=False,
-                       static_files={'/': os.path.dirname(__file__)})
+            #run_simple(r'localhost', self.port_number, app2, use_reloader=False, use_debugger=False, static_files={'/': os.path.dirname(main.__file__)})
+            httpd = make_server('', self.port_number, app2)
+            print(f"Serving on port {self.port_number}...")
+            httpd.serve_forever()
 
         th = threading.Thread(target=starter, daemon=True)
         th.start()
 
-        self.browser.SetClientHandler(LoadHandler(on_load_function, window_title=self.window_title, window_dimensions=self.window_dimensions))
+        self.browser.SetClientHandler(LoadHandler(on_load_function,
+                                                  window_title=self.window_title,
+                                                  window_dimensions=self.window_dimensions,
+                                                  browser=self, methods=self.methods,
+                                                  isClosing=self.isClosing))
 
     def run(self, onload = None):
         if not self.javascript_bound:
             self.bind_javascript()
 
         self.setup_server(on_load_function=onload)
-        q = queue.Queue()
 
-        q.put('somework')
-        q.join()  # Todo: there must be a better way
-
+        self.isClosing.wait()
+        cef.Shutdown()
 
 class JSAcessObject:
     """Ad-hoc object used to make dom assignments act as if they were more naturally supported"""
     # todo: this could likely be build much much better. But for rough solution it works quite well.
     # Note throughout this code. object.__setattr__ and object.__getattribute__ are used to access object attributes,
     # because the JSAcessObject methods themselves are overwritten.
-    def __init__(self, build='window', browser=None, queue_ref=None):
+    def __init__(self, build='window', browser=None, queue_ref=None, app=None):
+        object.__setattr__(self, 'app', app)
         object.__setattr__(self, 'build', build)
         object.__setattr__(self, 'browser', browser)
         object.__setattr__(self, 'queue_ref', queue_ref)
 
     def set_browser(self, browser):
-        print('browser set')
         object.__setattr__(self, 'browser', browser)
 
     def __getattr__(self, item):
@@ -237,33 +376,24 @@ class JSAcessObject:
         elif item not in ('set_browser', 'build'):
             return JSAcessObject(build=self.build + '.' + item,
                                  browser=object.__getattribute__(self, 'browser'),
-                                 queue_ref=object.__getattribute__(self, 'queue_ref'))
+                                 queue_ref=object.__getattribute__(self, 'queue_ref'),
+                                 app=self.app)
         else:
             return object.__getattribute__(self, item)
 
     def __call__(self, *args, **kwargs):
         return JSAcessObject(self.build + '(' + ','.join(argument_python_to_javascript(x) for x in args) + ')',
                              browser=object.__getattribute__(self, 'browser'),
-                             queue_ref=object.__getattribute__(self, 'queue_ref'))
+                             queue_ref=object.__getattribute__(self, 'queue_ref'),
+                             app=self.app)
 
     def __setattr__(self, key, value):
         if value is not None:
             browser = object.__getattribute__(self, 'browser')
             set_string = ''.join([self.build + '.' + key, '=', argument_python_to_javascript(value), ';'])
             if browser is not None:
-                browser.ExecuteJavascript(set_string)
+                self.app.ExecuteJavascript_syncronous(set_string)
             return None
-
-# window = JSAcessObject()
-
-# todo might be obsolete
-class document:
-    """ Class for referencing the dom"""
-    def getElementByID(id):
-        return f'document.getElementByID({id})'
-
-    def getElementsByName(name):
-        return f'document.getElementsByName({name})'
 
 
 def check_versions():
@@ -272,4 +402,11 @@ def check_versions():
           ver=platform.python_version(), arch=platform.architecture()[0]))
     assert cef.__version__ >= "55.3", "CEF Python v55.3+ required to run this"
 
-__version__ = '0.0.1-dev'
+
+
+__version__ = "0.1-dev"
+"""
+filefixer regexp:
+"\{\{ '([^']*)'\|staticfile }}"
+
+"""

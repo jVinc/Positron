@@ -14,8 +14,6 @@ html_code = """
 <div id = "explain">...</div>
 <button onclick="window.explain()">And click me repeatedly too!</button>
 """
-# todo: imports will be an issue. Which ones should go toe the frontend and which to the backend?
-
 
 class SolarSystemApp(PysitronApp):
     def __init__(self, *args, **kwargs):
