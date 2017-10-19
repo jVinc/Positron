@@ -1,4 +1,4 @@
-from Pysitron import PysitronApp
+from pysitron import PysitronApp
 
 html_code = """
 <button onclick="window.say_hello()" id="button">Click me to change text!</button>

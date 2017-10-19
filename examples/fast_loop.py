@@ -1,4 +1,4 @@
-from Pysitron import PysitronApp
+from pysitron import PysitronApp
 
 html_code = """
 <script>

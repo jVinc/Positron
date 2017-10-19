@@ -1,4 +1,4 @@
-from Pysitron import PysitronApp
+from pysitron import PysitronApp
 
 html_code = """
 <link rel="shortcut icon" href="file:///C:/Users/vincent/Documents/Positon-Framework/resources/logo/logo_vector.svg" />

@@ -1,6 +1,6 @@
 from itertools import chain
 import random
-from Pysitron import PysitronApp
+from pysitron import PysitronApp
 
 
 html_code = """

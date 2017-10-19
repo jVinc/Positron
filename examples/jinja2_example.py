@@ -1,5 +1,5 @@
 from jinja2 import Environment, FileSystemLoader
-from Pysitron import PysitronApp
+from pysitron import PysitronApp
 
 
 class SolarSystemApp(PysitronApp):
