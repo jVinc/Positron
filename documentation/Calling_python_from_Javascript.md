@@ -1,10 +1,10 @@
 # Calling python from javascript
 
-Applications must inherit from [BrowserClass][BrowserClass], any methods declared
+Applications must inherit from [PysitronApp][PysitronApp], any methods declared
 are automatically bound in the front-end
 
 ```
-class App(BrowserClass):
+class App(PysitronApp):
     def say_hello(self):
         print('hello world')
 ```
@@ -27,5 +27,5 @@ Therefore there are several options for calling back-end functions:
 
 ## Return values javascript to python
 
-[BrowserClass]: file://other.md
+[PysitronApp]: PysitronApp.md
 [asyncawait]: https://blog.sessionstack.com/how-javascript-works-event-loop-and-the-rise-of-async-programming-5-ways-to-better-coding-with-2f077c4438b5
