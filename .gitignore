@@ -11,3 +11,5 @@ click.egg-info
 .cache
 .ropeproject
 .idea
+
+local/
