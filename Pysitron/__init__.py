@@ -238,7 +238,7 @@ class LoadHandler(object):
 
 class PysitronApp:
     def __init__(self, landing_page='', start_page = '', window_title=None,
-                 port_number=None, window_dimensions = (400, 300), icon_path=None):
+                 port_number=None, window_dimensions = (400, 300), icon_path=None, developer_mode=False):
         self.window_dimensions = window_dimensions
         self.port_number = get_open_port() if port_number is None else port_number
         self.default_text = landing_page
@@ -262,12 +262,14 @@ class PysitronApp:
                  'locales_dir_path': os.path.dirname(sys.executable) + r'\cefpython3\locales'
                  } if getattr(sys, 'frozen', False) else {}
 
+        if developer_mode:
+            dev_options = {'context_menu': {'enabled': True}, 'debug': True, 'log_severity': 0}
+        else:
+            dev_options = {'context_menu': {'enabled': False}}
 
-        cef.Initialize(settings={'context_menu': {'enabled': True},
-                                 'auto_zooming': 'system_dpi',
-                                 'multi_threaded_message_loop':True,
-                                 'debug': True,
-                                 'log_severity': 0,
+        cef.Initialize(settings={'auto_zooming': 'system_dpi',
+                                 'multi_threaded_message_loop': True,
+                                 **dev_options,
                                  **freeze_paths})
         browser = None
 
@@ -427,4 +429,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.3-dev6"
+__version__ = "0.0.3-dev7"
