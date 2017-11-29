@@ -224,7 +224,6 @@ class LoadHandler(object):
                                 };
 
                                 """)
-        print('browser-side framework functions set')
 
         # Apply wrapper to make functions return promises
         for method in self.methods:

@@ -1,7 +1,6 @@
 from pysitron import PysitronApp
 
 html_code = """
-<link rel="shortcut icon" href="file:///C:/Users/vincent/Documents/Positon-Framework/resources/logo/logo_vector.svg" />
 <form>
 <input type="text" hint="height" id="height"></input>cm<br/>
 <input type="text" hint="weight" id="weight"></input>kg<br/>
