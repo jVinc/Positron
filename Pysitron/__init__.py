@@ -179,14 +179,6 @@ class LoadHandler(object):
             win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_SMALL, icon)
             win32gui.SendMessage(hwnd, win32con.WM_SETICON, win32con.ICON_BIG, icon)
 
-            # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_SMALL, icon)
-            # win32gui.SendMessage(win32gui.GetWindowDC(hwnd), win32con.WM_SETICON, win32con.ICON_BIG, icon)
-
-            # hicon = win32gui.LoadIcon(0, win32con.IDI_APPLICATION)
-            flags = win32gui.NIF_ICON | win32gui.NIF_MESSAGE | win32gui.NIF_TIP
-            nid = (hwnd, 0, flags, win32con.WM_USER + 20, icon, "Python Demo")
-            win32gui.Shell_NotifyIcon(win32gui.NIM_ADD, nid)
-
             def destroy_icon(icon):
                 win32gui.DestroyIcon(icon)
 
@@ -428,4 +420,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.3-dev7"
+__version__ = "0.0.3-dev8"
