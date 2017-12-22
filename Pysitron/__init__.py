@@ -45,8 +45,8 @@ class reloader_obj:
 
         newMethods = {}
         newProperties = {}
-        for attr_name in [x for x in dir(__main__.MyApp) if x not in dir(PysitronApp) and x not in dir(reloader_obj)]:
-            attr = getattr(foo.MyApp, attr_name)
+        for attr_name in [x for x in dir(getattr(__main__, self.__class__.__name__)) if x not in dir(PysitronApp) and x not in dir(reloader_obj)]:
+            attr = getattr(getattr(foo, self.__class__.__name__), attr_name)
             if not attr_name.startswith('_'):   # todo evaluate if any of the "hidden" attributes need to be reloaded
                 if hasattr(attr, '__call__'):
                     #newMethods[attr_name] = _enclose(attr.__call__) # todo is the enclose needed?
@@ -55,8 +55,7 @@ class reloader_obj:
                     newProperties[attr_name] = attr
 
         for met_name, met in itertools.chain(newMethods.items(), newProperties.items()):
-            print('updating', __main__.MyApp, met_name)
-            setattr(__main__.MyApp, met_name, met)
+            setattr(getattr(__main__, self.__class__.__name__), met_name, met)
 
         print("Updated %d methods and %d properties of %d versions of class %s in module %s." % (len(newMethods), len(newProperties), 1, self.__class__.__name__, 'backend_reloader_v2'))
 
@@ -481,4 +480,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.5-dev3"
+__version__ = "0.0.5-dev4"
