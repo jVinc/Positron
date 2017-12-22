@@ -24,7 +24,7 @@ class MyApp(App, reloader_obj):
 
     @staticmethod
     def version():
-        return '1'
+        return '1   '
 
     def shout(self):
         return f'This was printed from version v{self.__class__.version()} of the script'

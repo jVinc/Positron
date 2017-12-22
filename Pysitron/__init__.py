@@ -36,7 +36,6 @@ import __main__
 """
 
 class reloader_obj:
-
     def reload_me(self):
         # Reimport the file that defines the app object
         filepath = inspect.getfile(self.__class__)
@@ -46,19 +45,20 @@ class reloader_obj:
 
         newMethods = {}
         newProperties = {}
-        for attr_name in [x for x in dir(foo.MyApp) if x not in dir(PysitronApp)]:
+        for attr_name in [x for x in dir(__main__.MyApp) if x not in dir(PysitronApp) and x not in dir(reloader_obj)]:
             attr = getattr(foo.MyApp, attr_name)
             if not attr_name.startswith('_'):   # todo evaluate if any of the "hidden" attributes need to be reloaded
                 if hasattr(attr, '__call__'):
-                    #newMethods[attr_name] = _enclose(attr.__call__)    # todo is the enclose needed?
+                    #newMethods[attr_name] = _enclose(attr.__call__) # todo is the enclose needed?
                     newMethods[attr_name] = attr.__call__
                 elif isinstance(attr, property):
                     newProperties[attr_name] = attr
 
         for met_name, met in itertools.chain(newMethods.items(), newProperties.items()):
-            setattr(self.__class__, met_name, met)
+            print('updating', __main__.MyApp, met_name)
+            setattr(__main__.MyApp, met_name, met)
 
-        print("Updated %d methods and %d properties of %d versions of class %s in module %s." % (len(newMethods), len(newProperties), 1, 'MyApp', 'backend_reloader_v2'))
+        print("Updated %d methods and %d properties of %d versions of class %s in module %s." % (len(newMethods), len(newProperties), 1, self.__class__.__name__, 'backend_reloader_v2'))
 
 def sniffer(func, *labels):
     def wrapped(*args, **kwargs):
@@ -269,20 +269,21 @@ class LoadHandler(object):
                 self.on_load_function(browser)
 
         # If developer mode is active, the python side is reloaded on reload calls.
-        if issubclass(self.appobj, reloader_obj) and self.appobj.developer_mode:
-            print(inspect.getfile(self.appobj.__class__), self.appobj.__class__)
-            print('time', os.path.getmtime(inspect.getfile(self.appobj.__class__)))
+        if issubclass(self.appobj.__class__, reloader_obj) and self.appobj.developer_mode:
             if self.class_file_last_updated is None:
                 self.class_file_last_updated = os.path.getmtime(inspect.getfile(self.appobj.__class__))
             else:
-                if os.path.getmtime(inspect.getfile(self.__class__)) != self.class_file_last_updated:
+                if True:  # os.path.getmtime(inspect.getfile(self.appobj.__class__)) != self.class_file_last_updated:
                     self.class_file_last_updated = os.path.getmtime(inspect.getfile(self.appobj.__class__))
-                    self.appobj.reload_me()
+                    print(self.appobj, self.appobj.__class__, self.appobj.__class__.__name__)
+                    print(inspect.getmro(self.appobj.__class__))
+                    print(self.appobj.reload_me)
+                    self.appobj.__class__.reload_me(self.appobj)    #todo review why this is needed direct calls fail?
 
 
 class PysitronApp:
-    def __init__(self, landing_page='', start_page = '', window_title=None,
-                 port_number=None, window_dimensions = (400, 300), icon_path=None, developer_mode=False):
+    def __init__(self, landing_page='', start_page='', window_title=None,
+                 port_number=None, window_dimensions=(400, 300), icon_path=None, developer_mode=False):
         self.window_dimensions = window_dimensions
         self.port_number = get_open_port() if port_number is None else port_number
         self.default_text = landing_page
@@ -368,7 +369,7 @@ class PysitronApp:
         self.bindings.SetFunction('javascript_return', self.javascript_return)
 
         sub_class_methods = [method_name for method_name in dir(self.__class__) if (not method_name.startswith('_'))
-                            and (method_name not in dir(PysitronApp))
+                            and (method_name not in dir(PysitronApp) and (method_name not in dir(reloader_obj)))
                             and callable(getattr(self.__class__, method_name))
                             and getattr(getattr(self.__class__, method_name), 'bind_to_window', True)]
         for method in sub_class_methods:
@@ -480,4 +481,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.5-dev2"
+__version__ = "0.0.5-dev3"
