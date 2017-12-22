@@ -269,7 +269,7 @@ class LoadHandler(object):
                 self.on_load_function(browser)
 
         # If developer mode is active, the python side is reloaded on reload calls.
-        if self.appobj.developer_mode:
+        if issubclass(self.appobj, reloader_obj) and self.appobj.developer_mode:
             print(inspect.getfile(self.appobj.__class__), self.appobj.__class__)
             print('time', os.path.getmtime(inspect.getfile(self.appobj.__class__)))
             if self.class_file_last_updated is None:
@@ -480,4 +480,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.5-dev1"
+__version__ = "0.0.5-dev2"
