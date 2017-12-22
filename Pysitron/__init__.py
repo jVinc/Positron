@@ -11,9 +11,6 @@ from jinja2 import Environment, BaseLoader
 from threading import Thread
 import platform
 import sys
-import win32con  # todo figure out a nice way of making the functionality used from win32 cross-platform
-import win32gui
-import win32api
 import threading
 import queue
 import __main__ as main
@@ -24,6 +21,50 @@ import functools
 import base64
 import tempfile
 
+import win32con  # todo figure out a nice way of making the functionality used from win32 cross-platform
+import win32gui
+import win32api
+
+import inspect
+import importlib
+import itertools
+import __main__
+
+""" Handles:
+* loading icons
+* Sizing window
+"""
+
+class reloader_obj:
+
+    def reload_me(self):
+        # Reimport the file that defines the app object
+        filepath = inspect.getfile(self.__class__)
+        spec = importlib.util.spec_from_file_location("newObj", filepath)
+        foo = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(foo)
+
+        newMethods = {}
+        newProperties = {}
+        for attr_name in [x for x in dir(foo.MyApp) if x not in dir(PysitronApp)]:
+            attr = getattr(foo.MyApp, attr_name)
+            if not attr_name.startswith('_'):   # todo evaluate if any of the "hidden" attributes need to be reloaded
+                if hasattr(attr, '__call__'):
+                    #newMethods[attr_name] = _enclose(attr.__call__)    # todo is the enclose needed?
+                    newMethods[attr_name] = attr.__call__
+                elif isinstance(attr, property):
+                    newProperties[attr_name] = attr
+
+        for met_name, met in itertools.chain(newMethods.items(), newProperties.items()):
+            setattr(self.__class__, met_name, met)
+
+        print("Updated %d methods and %d properties of %d versions of class %s in module %s." % (len(newMethods), len(newProperties), 1, 'MyApp', 'backend_reloader_v2'))
+
+def sniffer(func, *labels):
+    def wrapped(*args, **kwargs):
+        print('sniffer called:', func, *labels)
+        return func(*args, **kwargs)
+    return wrapped
 
 def static_path(filename):
     return "/" + filename
@@ -46,7 +87,6 @@ class Length_Correcting_Middleware(object):
             return start_response(status, headers, exc_info)
 
         return self.app(environ, custom_start_response)
-
 
 
 def jinja2_parse_middleware(fun):
@@ -137,7 +177,7 @@ def load_icon_from_file(icon_path):
 
 
 class LoadHandler(object):
-    def __init__(self, on_load_function=None, window_title="", window_dimensions=(800, 500), browser=None, methods=None, isClosing=None, icon_path=None):
+    def __init__(self, on_load_function=None, window_title="", window_dimensions=(800, 500), browser=None, methods=None, isClosing=None, icon_path=None, appobj=None):
         self.window_dimensions = window_dimensions
         self.window_title = window_title
         self.on_load_function = on_load_function
@@ -146,6 +186,8 @@ class LoadHandler(object):
         self.methods = methods
         self.isClosing = isClosing
         self.icon_path = icon_path
+        self.appobj = appobj
+        self.class_file_last_updated = None
 
     def OnBeforeClose(self, browser, **_):
         self.isClosing.set()
@@ -226,6 +268,17 @@ class LoadHandler(object):
             if self.on_load_function is not None:
                 self.on_load_function(browser)
 
+        # If developer mode is active, the python side is reloaded on reload calls.
+        if self.appobj.developer_mode:
+            print(inspect.getfile(self.appobj.__class__), self.appobj.__class__)
+            print('time', os.path.getmtime(inspect.getfile(self.appobj.__class__)))
+            if self.class_file_last_updated is None:
+                self.class_file_last_updated = os.path.getmtime(inspect.getfile(self.appobj.__class__))
+            else:
+                if os.path.getmtime(inspect.getfile(self.__class__)) != self.class_file_last_updated:
+                    self.class_file_last_updated = os.path.getmtime(inspect.getfile(self.appobj.__class__))
+                    self.appobj.reload_me()
+
 
 class PysitronApp:
     def __init__(self, landing_page='', start_page = '', window_title=None,
@@ -242,6 +295,7 @@ class PysitronApp:
         self.isClosing = threading.Event()
         self._return_queue_dict = dict()
         self.icon_path = icon_path
+        self.developer_mode = developer_mode
 
         check_versions()
         sys.excepthook = cef.ExceptHook  # To shutdown all CEF processes on error
@@ -305,8 +359,13 @@ class PysitronApp:
             return wrapped
         return wrapper
 
+    def rebind_javascript(self):
+        self.bindings = cef.JavascriptBindings(bindToFrames=True, bindToPopups=True)
+        self.bind_javascript()
+
     def bind_javascript(self):
         self.bindings.SetFunction('set_value', self.set_value)
+        self.bindings.SetFunction('javascript_return', self.javascript_return)
 
         sub_class_methods = [method_name for method_name in dir(self.__class__) if (not method_name.startswith('_'))
                             and (method_name not in dir(PysitronApp))
@@ -316,16 +375,16 @@ class PysitronApp:
             # Injecting the self object back into bound functions, so it's easier for the python side of things
             # to mess around with things.
             # todo review if it´s a sane thing to make all callbacks threaded
-            loaded_method = lambda *args, raw_method=getattr(self.__class__, method): daemon_threaded(return_value(raw_method))(self, *args)
+            # loaded_method = lambda *args, raw_method=getattr(self.__class__, method): daemon_threaded(return_value(raw_method))(self, *args)
+            loaded_method = lambda *args, raw_methodname=method, fixclass=self: sniffer(daemon_threaded, getattr(fixclass.__class__, raw_methodname))(return_value(getattr(fixclass.__class__, raw_methodname)))(fixclass, *args)
             self.bindings.SetFunction(method, loaded_method)
-
 
         self.methods = sub_class_methods
 
-        self.bindings.SetFunction('javascript_return', self.javascript_return)
-
         self.browser.SetJavascriptBindings(self.bindings)
 
+        if hasattr(self, 'shout'):
+            print(self.shout)
         self.javascript_bound = True
 
     def setup_server(self, on_load_function=None):
@@ -357,7 +416,8 @@ class PysitronApp:
                                                   window_dimensions=self.window_dimensions,
                                                   browser=self, methods=self.methods,
                                                   isClosing=self.isClosing,
-                                                  icon_path=self.icon_path))
+                                                  icon_path=self.icon_path,
+                                                  appobj=self))
 
     def run(self, onload = None):
         """ Binds the javascript functions if this has not already been done, and starts the server and front-end"""
@@ -420,4 +480,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.3-dev8"
+__version__ = "0.0.5-dev1"
