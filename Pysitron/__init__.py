@@ -25,6 +25,7 @@ import win32con  # todo figure out a nice way of making the functionality used f
 import win32gui
 import win32api
 
+
 import inspect
 import importlib
 import itertools
@@ -199,7 +200,13 @@ class LoadHandler(object):
             # hwnd = win32gui.GetForegroundWindow()
             hwnd = get_window_by_title(self.window_title)
 
-            win32gui.MoveWindow(hwnd, 0, 0, app_width, app_height, True)
+            print(win32api.GetSystemMetrics(0), win32api.GetSystemMetrics(1))
+
+            win32gui.MoveWindow(hwnd,
+                                round(win32api.GetSystemMetrics(0) / 2-app_width/2),
+                                round(win32api.GetSystemMetrics(1) / 2-app_height/2),
+                                app_width,
+                                app_height, True)
 
             style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
             style &= ~win32con.WS_SIZEBOX
@@ -480,4 +487,4 @@ def check_versions():
 
 
 
-__version__ = "0.0.5-dev4"
+__version__ = "0.0.5-dev5"

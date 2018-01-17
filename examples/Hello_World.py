@@ -10,8 +10,6 @@ class SolarSystemApp(PysitronApp):
         self.window.document.getElementById('button').innerHTML = "Hello world!"
 
 
-from pysitron.syntax_helpers import document
-
 if __name__ == '__main__':
-    app = SolarSystemApp(landing_page=html_code)
+    app = SolarSystemApp(landing_page=html_code, developer_mode=True)
     app.run()
